@@ -314,7 +314,7 @@ class Ship (Vehicle):
 		stroke_weight(0)
 		tint(1,1,1)
 		
-		triangle_strip(verts, uverts, "spaceship.PNG")
+		triangle_strip(verts, uverts, "graphics/spaceship.PNG")
 		
 		
 		if not self.landed:
