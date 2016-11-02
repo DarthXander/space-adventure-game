@@ -266,31 +266,50 @@ class Ship (Vehicle):
 		y = self.position.y
 		c = cos(self.angle)
 		s = sin(self.angle)
-		size = 50
-		r = [(-size, -size), (size, -size), (-size, size), (size, size)]
-		u = [(0, 0), (1, 0), (0, 1), (1, 1)]
+		
+		crop = Rect(0, .1, 1, .9)
+		u = [Point(crop.min_x, crop.min_y), Point(crop.max_x, crop.min_y), Point(crop.min_x, crop.max_y), Point(crop.max_x, crop.max_y)]
+		
+		size = 100
+		crop.center(Point(0, 0))
+		landed_pos = (crop.h)*size
+		r = [Point(crop.min_x*size, crop.min_y*size), Point(crop.max_x*size, crop.min_y*size), Point(crop.min_x*size, crop.max_y*size), Point(crop.max_x*size, crop.max_y*size)]
+		# r[2] r[3]
+		# r[0] r[1]
+		
 		verts = [r[0], r[1], r[2], r[1], r[2], r[3]]
 		uverts = [u[0], u[1], u[2], u[1], u[2], u[3]]
 		collision = [r[0], r[2], (r[1] + r[3])/2.0]
+		
 		for i, v in enumerate(verts):
-			verts[i] = (self.position.x + c*v[0] - s*v[1], self.position.y + s*v[0] + c*v[1])
+			verts[i] = Point(self.position.x + c*v[0] - s*v[1], self.position.y + s*v[0] + c*v[1])
+			
+		nv = self.velocity + self.acceleration
+		np = self.position + nv
+		for i, v in enumerate(collision):
+			collision[i] = Point(np.x + c*v[0] - s*v[1], np.y + s*v[0] + c*v[1])
+			
 		if self.accelerating:
 			leftbottom = Point(verts[0][0], verts[0][1])
 			rightbottom = Point(verts[1][0], verts[1][1])
 			bottomside = rightbottom - leftbottom
-			flamepos = leftbottom + bottomside*random.random()
-			flamedir = Vector2(cos(self.angle - pi/2.0), sin(self.angle - pi/2.0))
-			self.flames.append(Flame(flamepos.x, flamepos.y, flamedir))
+			leftthruster = leftbottom + bottomside*.3
+			rightthruster = leftbottom + bottomside*.7
+			
+			for flamepos in [leftthruster, rightthruster]:
+				flamedir = Vector2(cos(self.angle - pi/2.0), sin(self.angle - pi/2.0))
+				self.flames.append(Flame(flamepos.x, flamepos.y, flamedir))
+			
 		if self.a_angle != 0:
 			if self.a_angle > 0:
-				rightbottom = Point(verts[1][0], verts[1][1])
-				righttop = Point(verts[4][0], verts[4][1])
+				rightbottom = verts[1]
+				righttop = (verts[4] + verts[5])/2.0
 				right_anglethruster = (righttop + rightbottom)/2.0
 				flamedir = Vector2(cos(self.angle), sin(self.angle))
 				self.flames.append(Flame(right_anglethruster.x, right_anglethruster.y, flamedir))
 			if self.a_angle < 0:
-				leftbottom = Point(verts[0][0], verts[0][1])
-				lefttop = Point(verts[5][0], verts[5][1])
+				leftbottom = verts[0]
+				lefttop = (verts[4] + verts[5])/2.0
 				left_anglethruster = (lefttop + leftbottom)/2.0
 				flamedir = Vector2(cos(self.angle - pi), sin(self.angle - pi))
 				self.flames.append(Flame(left_anglethruster.x, left_anglethruster.y, flamedir))
@@ -300,13 +319,13 @@ class Ship (Vehicle):
 				self.flames.remove(f)
 				del f
 		for celestial in self.game.celestials:
-			if celestial.collision_test_rect([verts[0], verts[1], verts[2], verts[5]]):
+			if celestial.collision_test_rect(collision):
 				if celestial.valid_landing(self.position, Vector2(cos(self.angle + pi/2.0), sin(self.angle + pi/2.0))):
 					self.acceleration = Vector2(0, 0)
 					self.velocity = Vector2(0, 0)
 					self.a_angle = 0
 					self.v_angle = 0
-					landed = celestial.landed_pos(self.position, size*2)
+					landed = celestial.landed_pos(self.position, landed_pos)
 					self.position = landed[0]
 					self.angle = landed[1]
 					self.landed = True
@@ -314,7 +333,9 @@ class Ship (Vehicle):
 					self.velocity *= -.5
 		stroke_weight(0)
 		tint(1,1,1)
+		fill(1,1,1,.5)
 		
+		#triangle_strip(verts)
 		triangle_strip(verts, uverts, "graphics/spaceship.PNG")
 		
 		
@@ -333,10 +354,6 @@ class Ship (Vehicle):
 			self.velocity += self.acceleration
 			self.position += self.velocity
 		
-		
-		
-		
-
 class Button (object):
 	def __init__(self, x, y, pressed_func, diameter = 80, draw = None, image = None):
 		# draw must be a function with signature:
