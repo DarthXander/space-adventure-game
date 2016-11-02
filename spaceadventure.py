@@ -435,7 +435,7 @@ class SpaceAdventure (Scene):
 		self.view_rect.center(self.vehicle.position)
 		self.view_scale = 1.5
 		type(self.view_rect)
-		self.celestials = [Planet(1000, 1000, radius = 800)]
+		self.celestials = [Planet(1000, 1000, radius = 800), Planet(-500, -500, radius = 200)]
 		self.stars = Stars(self)
 		
 	def scale(self, rect, s):
