@@ -1,6 +1,6 @@
 # coding: utf-8
 from scene import *
-from math import pi, sin, cos, ceil
+from math import pi, sin, cos, ceil, acos, atan
 from colorsys import hsv_to_rgb
 from PIL import Image, ImageDraw
 import random
@@ -27,9 +27,11 @@ def generate(min, max):
 # then say for that small planet which happened to spawn a moon, it will spawn small, because of the skewing of the original spawn
 # so skewing will inherit among class delegation for the solar system generation classes.
 
-# looking like a good plan so far!#6
+# looking like a good plan so far!
 
-g = .0001
+g = .0003
+
+valid_landing_angle = 2*pi*(5.0/360.0)
 
 min_planet_num = 1
 max_planet_num = 8
@@ -119,6 +121,19 @@ class Celestial (DrawableGameObject):
 		return volume*self.density
 	def calc_radius(self):
 		return ((3.0*self.mass)/(4.0*self.density*pi))**(1.0/3.0)
+	def collision_test_rect(self, pts):
+		for p in pts:
+			if abs(p - self.position) <= self.radius:
+				return True
+	def valid_landing(self, center, vert):
+		out = center - self.position
+		out = out/abs(out)
+		return acos(out.x * vert.x + out.y * vert.y) < valid_landing_angle
+	def landed_pos(self, center, height):
+		out = center - self.position
+		nout = out/abs(out)
+		angle = atan(out.y/out.x) + pi/2.0 + (pi if out.x > 0 else 0)
+		return (self.position + nout*(self.radius + height/2.0), angle)
 
 class Path (object):
 	def __init__(self, path, speed = .01):
@@ -219,6 +234,7 @@ class Ship (Vehicle):
 		buttons.append(Button(game.bounds.w*.9, game.bounds.h*.1, self.accelerate))
 		buttons.append(Button(game.bounds.w*.1, game.bounds.h*.1, self.rotate_left))
 		buttons.append(Button(game.bounds.w*.2, game.bounds.h*.1, self.rotate_right))
+		self.landed = False
 		self.thrust_force = .1
 		self.rotate_force = .003
 		self.game = game
@@ -227,6 +243,7 @@ class Ship (Vehicle):
 	def accelerate(self, state):
 		if state:
 			self.accelerating = True 
+			self.landed = False
 		else:
 			self.accelerating = False
 	def rotate_left(self, state):
@@ -250,8 +267,10 @@ class Ship (Vehicle):
 		c = cos(self.angle)
 		s = sin(self.angle)
 		size = 50
-		r = [(-size, -size), (size, -size), (-size*.5, size), (size*.5, size)]
+		r = [(-size, -size), (size, -size), (-size, size), (size, size)]
+		u = [(0, 0), (1, 0), (0, 1), (1, 1)]
 		verts = [r[0], r[1], r[2], r[1], r[2], r[3]]
+		uverts = [u[0], u[1], u[2], u[1], u[2], u[3]]
 		for i, v in enumerate(verts):
 			verts[i] = (self.position.x + c*v[0] - s*v[1], self.position.y + s*v[0] + c*v[1])
 		if self.accelerating:
@@ -279,22 +298,40 @@ class Ship (Vehicle):
 			if f.radius <= 0:
 				self.flames.remove(f)
 				del f
-		stroke_weight(0)
-		fill(1,1,1)
-		triangle_strip(verts)
-		self.v_angle += self.a_angle
-		if self.a_angle == 0:
-			self.v_angle *= .9
-		if abs(self.v_angle) < .0001:
-			self.v_angle = 0
-		self.angle += self.v_angle
-		self.acceleration = Vector2(0, 0)
-		if self.accelerating:
-			self.acceleration += Vector2(sin(-self.angle), cos(-self.angle))*self.thrust_force
 		for celestial in self.game.celestials:
-			self.acceleration += celestial.calc_force(self.position, self.mass)
-		self.velocity += self.acceleration
-		self.position += self.velocity
+			if celestial.collision_test_rect([verts[0], verts[1], verts[2], verts[5]]):
+				if celestial.valid_landing(self.position, Vector2(cos(self.angle + pi/2.0), sin(self.angle + pi/2.0))):
+					self.acceleration = Vector2(0, 0)
+					self.velocity = Vector2(0, 0)
+					self.a_angle = 0
+					self.v_angle = 0
+					landed = celestial.landed_pos(self.position, size*2)
+					self.position = landed[0]
+					self.angle = landed[1]
+					self.landed = True
+				else:
+					self.velocity *= -.5
+		stroke_weight(0)
+		tint(1,1,1)
+		
+		triangle_strip(verts, uverts, "spaceship.PNG")
+		
+		
+		if not self.landed:
+			self.v_angle += self.a_angle
+			if self.a_angle == 0:
+				self.v_angle *= .9
+			if abs(self.v_angle) < .0001:
+				self.v_angle = 0
+			self.angle += self.v_angle
+			self.acceleration = Vector2(0, 0)
+			if self.accelerating:
+				self.acceleration += Vector2(sin(-self.angle), cos(-self.angle))*self.thrust_force
+			for celestial in self.game.celestials:
+				self.acceleration += celestial.calc_force(self.position, self.mass)
+			self.velocity += self.acceleration
+			self.position += self.velocity
+		
 		
 		
 		
