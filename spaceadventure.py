@@ -271,6 +271,7 @@ class Ship (Vehicle):
 		u = [(0, 0), (1, 0), (0, 1), (1, 1)]
 		verts = [r[0], r[1], r[2], r[1], r[2], r[3]]
 		uverts = [u[0], u[1], u[2], u[1], u[2], u[3]]
+		collision = [r[0], r[2], (r[1] + r[3])/2.0]
 		for i, v in enumerate(verts):
 			verts[i] = (self.position.x + c*v[0] - s*v[1], self.position.y + s*v[0] + c*v[1])
 		if self.accelerating:
