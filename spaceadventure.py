@@ -336,7 +336,7 @@ class Ship (Vehicle):
 		fill(1,1,1,.5)
 		
 		#triangle_strip(verts)
-		triangle_strip(verts, uverts, "graphics/spaceship.PNG")
+		triangle_strip(verts, uverts, "graphics/spaceship.png")
 		
 		
 		if not self.landed:
@@ -435,7 +435,11 @@ class SpaceAdventure (Scene):
 		self.view_rect.center(self.vehicle.position)
 		self.view_scale = 1.5
 		type(self.view_rect)
-		self.celestials = [Planet(1000, 1000, radius = 800), Planet(-500, -500, radius = 200)]
+		self.celestials = []
+		for x in range(-5, 5):
+			for y in range(-5, 5):
+				if not (x == 0 and y == 0):
+					self.celestials.append(Planet(x*2000, y*2000, radius = 500 + random.random()*400))
 		self.stars = Stars(self)
 		
 	def scale(self, rect, s):
